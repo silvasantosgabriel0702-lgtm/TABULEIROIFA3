@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EcoCiclo: O Desafio do Resíduo Zero - IFA</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        eco: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            300: '#86efac',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                            950: '#052e16',
+                        },
+                        math: '#3b82f6',
+                        chem: '#a855f7',
+                        bio: '#eab308'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Poppins', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b132b;
+            color: #f8fafc;
+            background-image:
+                radial-gradient(at 0% 0%, rgba(22, 163, 74, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+        h1, h2, h3, h4, .font-heading {
+            font-family: 'Poppins', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #22c55e;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #16a34a;
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-card-hover {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @media (min-width: 768px) {
+            .glass-card-hover:hover {
+                transform: translateY(-3px);
+                border-color: rgba(34, 197, 94, 0.4);
+                box-shadow: 0 10px 30px -10px rgba(34, 197, 94, 0.25);
+            }
+        }
+        /* Slider styling */
+        input[type=range]::-webkit-slider-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #22c55e;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-100 antialiased selection:bg-eco-500 selection:text-slate-950">
+    <!-- HEADER / TOP NAV -->
+    <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-40 px-3 sm:px-4 py-2.5">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
+            <div class="flex items-center justify-between w-full sm:w-auto gap-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-eco-500 flex items-center justify-center text-slate-950 text-lg sm:text-xl font-black shadow-lg shadow-eco-500/20 shrink-0">
+                        <i class="fa-solid fa-recycle"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-sm sm:text-lg font-bold text-white leading-none font-heading flex items-center gap-1.5 flex-wrap">
+                            EcoCiclo <span class="text-[10px] sm:text-xs font-normal text-eco-300 bg-eco-950 border border-eco-600/40 px-2 py-0.5 rounded-full">Simulador IFA</span>
+                        </h1>
+                        <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">Projeto Integrador: Matemática • Química • Biologia</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Dashboard Indicators (Header Quick Stats) - Fully Responsive -->
+            <div id="header-stats" class="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 text-xs font-semibold overflow-x-auto pb-1 sm:pb-0">
+                <div class="bg-slate-900 border border-slate-800 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg flex items-center gap-2 shrink-0">
+                    <i class="fa-solid fa-coins text-amber-400 text-xs sm:text-sm"></i>
+                    <div>
+                        <span class="text-slate-400 block text-[9px] sm:text-[10px] leading-tight">EcoCoins (EC)</span>
+                        <span id="stat-ec-head" class="text-amber-400 font-bold text-xs sm:text-sm">100 EC</span>
+                    </div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg flex items-center gap-2 shrink-0">
+                    <i class="fa-solid fa-seedling text-eco-400 text-xs sm:text-sm"></i>
+                    <div>
+                        <span class="text-slate-400 block text-[9px] sm:text-[10px] leading-tight">EcoScore</span>
+                        <span id="stat-score-head" class="text-eco-400 font-bold text-xs sm:text-sm">50 / 100</span>
+                    </div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg flex items-center gap-2 shrink-0">
+                    <i class="fa-solid fa-calendar-days text-blue-400 text-xs sm:text-sm"></i>
+                    <div>
+                        <span class="text-slate-400 block text-[9px] sm:text-[10px] leading-tight">Ano Gestão</span>
+                        <span id="stat-year-head" class="text-blue-400 font-bold text-xs sm:text-sm">1 de 5</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6">
+        <!-- ================= TELA 1: INTRODUÇÃO ================= -->
+        <section id="screen-intro" class="max-w-4xl mx-auto space-y-5 sm:space-y-6 py-3 sm:py-6">
+            <div class="text-center space-y-2.5 sm:space-y-3">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-eco-950 border border-eco-500/30 text-eco-400 text-xs font-bold uppercase tracking-wider">
+                    <i class="fa-solid fa-graduation-cap"></i> Ensino Médio - 1º Ano IFA
+                </div>
+                <h1 class="text-2xl sm:text-5xl font-black text-white font-heading tracking-tight leading-tight px-2">
+                    EcoCiclo: O Desafio do Resíduo Zero
+                </h1>
+                <p class="text-slate-300 text-xs sm:text-base max-w-2xl mx-auto font-normal px-2">
+                    Assuma a gestão sustentável de uma cidade em crescimento ao longo de 5 Anos. Invista estrategicamente em recursos de <strong>Biologia</strong>, <strong>Química</strong> e <strong>Matemática</strong> para maximizar a reciclagem e zerar o acúmulo nos aterros sanitários.
+                </p>
+            </div>
+
+            <!-- Interdisciplinary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4">
+                <!-- Card Biologia -->
+                <div class="glass-card glass-card-hover rounded-2xl p-4 sm:p-5 border-t-4 border-t-bio space-y-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-bio/20 text-bio flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-leaf"></i>
+                    </div>
+                    <h2 class="text-base sm:text-lg font-bold text-white font-heading">Hub de Biologia</h2>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Gerencie usinas de compostagem aeróbica. Converta resíduos orgânicos em fertilizantes naturais e evite emissões de gás metano (CH₄) e chorume.
+                    </p>
+                    <div class="text-[11px] text-bio font-semibold pt-1">
+                        <i class="fa-solid fa-check-circle"></i> Foco: Decomposição & Ecossistemas
+                    </div>
+                </div>
+
+                <!-- Card Química -->
+                <div class="glass-card glass-card-hover rounded-2xl p-4 sm:p-5 border-t-4 border-t-chem space-y-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-chem/20 text-chem flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-flask"></i>
+                    </div>
+                    <h2 class="text-base sm:text-lg font-bold text-white font-heading">Hub de Química</h2>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Implemente triagem avançada de polímeros (PET, PEAD, PVC, PP), metais e vidros. Aumente a pureza do material e viabilize a reciclagem mecânica e química.
+                    </p>
+                    <div class="text-[11px] text-chem font-semibold pt-1">
+                        <i class="fa-solid fa-check-circle"></i> Foco: Polímeros & Estruturas
+                    </div>
+                </div>
+
+                <!-- Card Matemática -->
+                <div class="glass-card glass-card-hover rounded-2xl p-4 sm:p-5 border-t-4 border-t-math space-y-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-math/20 text-math flex items-center justify-center text-xl font-bold">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <h2 class="text-base sm:text-lg font-bold text-white font-heading">Hub de Matemática</h2>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Monitore a taxa de eficiência <span class="text-math font-mono font-bold">E = (Reciclado / Total) × 100</span>. Otimize rotas logísticas e multiplique o ROI dos EcoCoins.
+                    </p>
+                    <div class="text-[11px] text-math font-semibold pt-1">
+                        <i class="fa-solid fa-check-circle"></i> Foco: Porcentagens, Lucro & Equações
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Button -->
+            <div class="text-center pt-2 sm:pt-4">
+                <button onclick="startGame()" class="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-eco-500 hover:bg-eco-400 text-slate-950 font-extrabold text-sm sm:text-lg rounded-2xl font-heading shadow-xl shadow-eco-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer inline-flex items-center justify-center gap-3">
+                    <span>INICIAR SIMULAÇÃO (5 ANOS)</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= TELA 2: DASHBOARD DE GESTÃO (RODADAS 1-5) ================= -->
+        <section id="screen-game" class="hidden space-y-4 sm:space-y-6">
+            <!-- Dashboard Top Bar -->
+            <div class="glass-card rounded-2xl p-3.5 sm:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
+                <div>
+                    <span class="text-[10px] sm:text-xs font-bold text-eco-400 uppercase tracking-widest font-heading">Gestão da Cidade</span>
+                    <h2 class="text-xl sm:text-3xl font-black text-white font-heading flex items-center gap-2.5">
+                        <span id="display-current-year">Ano 1</span>
+                        <span class="text-[10px] sm:text-xs font-normal text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700">5 Rodadas</span>
+                    </h2>
+                </div>
+                <div class="grid grid-cols-3 gap-2 sm:gap-6 pt-2 md:pt-0 border-t md:border-t-0 border-slate-800/80">
+                    <div class="text-center md:text-right">
+                        <span class="text-[9px] sm:text-[11px] text-slate-400 uppercase block font-semibold truncate">Resíduos</span>
+                        <span id="display-total-waste" class="text-sm sm:text-lg font-bold text-slate-200 font-mono">1.000 kg</span>
+                    </div>
+                    <div class="text-center md:text-right">
+                        <span class="text-[9px] sm:text-[11px] text-slate-400 uppercase block font-semibold truncate">Aterro</span>
+                        <div class="flex items-center justify-center md:justify-end gap-1.5">
+                            <span id="display-landfill-pct" class="text-sm sm:text-lg font-bold text-rose-400 font-mono">20%</span>
+                            <div class="w-10 sm:w-16 bg-slate-800 h-2 rounded-full overflow-hidden hidden xs:block">
+                                <div id="display-landfill-bar" class="bg-rose-500 h-full w-[20%] transition-all duration-300"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center md:text-right">
+                        <span class="text-[9px] sm:text-[11px] text-slate-400 uppercase block font-semibold truncate">Orçamento</span>
+                        <span id="display-ec-balance" class="text-sm sm:text-lg font-bold text-amber-400 font-mono">100 EC</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Interactive Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+                <!-- LEFT COLUMN (2 Cols): HUB INVESTMENTS & RESÍDUOS ALLOCATION -->
+                <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+                    <!-- SECTION A: HUB UPGRADES -->
+                    <div class="space-y-2.5 sm:space-y-3">
+                        <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-300 font-heading flex items-center gap-2">
+                            <i class="fa-solid fa-microchip text-eco-400"></i> 1. Investimento em Hubs de Tecnologia
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+                            <!-- Hub Biologia Upgrade -->
+                            <div class="glass-card rounded-xl p-3 sm:p-3.5 space-y-2 border-l-4 border-l-bio">
+                                <div class="flex justify-between items-start">
+                                    <span class="text-xs font-bold text-bio font-heading">Hub Biologia</span>
+                                    <span id="lvl-bio" class="text-[10px] bg-bio/20 text-bio px-2 py-0.5 rounded font-bold">Nível 1</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300">Compostagem e captura de CH₄.</p>
+                                <div class="flex justify-between items-center pt-1">
+                                    <span class="text-[11px] sm:text-xs font-semibold text-slate-400">Custo: <strong class="text-amber-400">30 EC</strong></span>
+                                    <button onclick="upgradeHub('bio')" id="btn-upgrade-bio" class="px-2.5 py-1 bg-bio hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition-all cursor-pointer">
+                                        Evoluir
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Hub Química Upgrade -->
+                            <div class="glass-card rounded-xl p-3 sm:p-3.5 space-y-2 border-l-4 border-l-chem">
+                                <div class="flex justify-between items-start">
+                                    <span class="text-xs font-bold text-chem font-heading">Hub Química</span>
+                                    <span id="lvl-chem" class="text-[10px] bg-chem/20 text-chem px-2 py-0.5 rounded font-bold">Nível 1</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300">Triagem para PET/Vidro/Metal.</p>
+                                <div class="flex justify-between items-center pt-1">
+                                    <span class="text-[11px] sm:text-xs font-semibold text-slate-400">Custo: <strong class="text-amber-400">30 EC</strong></span>
+                                    <button onclick="upgradeHub('chem')" id="btn-upgrade-chem" class="px-2.5 py-1 bg-chem hover:bg-purple-400 text-slate-950 font-bold text-xs rounded-lg transition-all cursor-pointer">
+                                        Evoluir
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Hub Matemática Upgrade -->
+                            <div class="glass-card rounded-xl p-3 sm:p-3.5 space-y-2 border-l-4 border-l-math">
+                                <div class="flex justify-between items-start">
+                                    <span class="text-xs font-bold text-math font-heading">Hub Matemática</span>
+                                    <span id="lvl-math" class="text-[10px] bg-math/20 text-math px-2 py-0.5 rounded font-bold">Nível 1</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300">Aumenta rendimento (EC/kg).</p>
+                                <div class="flex justify-between items-center pt-1">
+                                    <span class="text-[11px] sm:text-xs font-semibold text-slate-400">Custo: <strong class="text-amber-400">30 EC</strong></span>
+                                    <button onclick="upgradeHub('math')" id="btn-upgrade-math" class="px-2.5 py-1 bg-math hover:bg-blue-400 text-slate-950 font-bold text-xs rounded-lg transition-all cursor-pointer">
+                                        Evoluir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION B: CATEGORY PROCESSING ALLOCATION -->
+                    <div class="glass-card rounded-2xl p-3.5 sm:p-5 space-y-3 sm:space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 border-b border-slate-800 pb-2.5">
+                            <h3 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-200 font-heading flex items-center gap-2">
+                                <i class="fa-solid fa-sliders text-eco-400"></i> 2. Alocação de Capacidade de Tratamento
+                            </h3>
+                            <span class="text-[11px] sm:text-xs font-semibold text-slate-400">CapacidadeUsada: <strong id="total-capacity-used" class="text-eco-400 font-mono">0 / 600 kg</strong></span>
+                        </div>
+
+                        <!-- SLIDERS PER MATERIAL -->
+                        <div class="space-y-3" id="materials-allocation-list">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN (1 Col): LIVE MATH FORMULA & PREVIEW REPORT -->
+                <div class="space-y-4 sm:space-y-6">
+                    <!-- LIVE MATHEMATICAL CALCULATOR PANEL -->
+                    <div class="glass-card rounded-2xl p-4 sm:p-5 space-y-3.5 sm:space-y-4 border border-math/30">
+                        <div class="flex items-center gap-2.5 border-b border-slate-800 pb-2.5">
+                            <i class="fa-solid fa-calculator text-math text-lg sm:text-xl"></i>
+                            <div>
+                                <h3 class="text-xs sm:text-sm font-bold text-white font-heading">Cálculo de Eficiência Integrada</h3>
+                                <p class="text-[10px] text-slate-400">Fórmula de Desempenho do Projeto</p>
+                            </div>
+                        </div>
+
+                        <!-- Formula Box -->
+                        <div class="bg-slate-950 p-3 sm:p-3.5 rounded-xl border border-slate-800 text-center font-mono space-y-1.5">
+                            <div class="text-[11px] sm:text-xs text-slate-400">Equação da Taxa de Eficiência ($E$):</div>
+                            <div class="text-xs sm:text-sm font-bold text-math break-words">
+                                E = ( <span id="formula-recycled-val" class="text-eco-400">0</span> / <span id="formula-total-val" class="text-slate-300">1000</span> ) × 100
+                            </div>
+                            <div class="text-xl sm:text-2xl font-black text-eco-400 pt-0.5 font-heading">
+                                E = <span id="formula-result-pct">0.0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Live Impact Estimates -->
+                        <div class="space-y-1.5 text-xs">
+                            <div class="flex justify-between items-center py-1 border-b border-slate-800/60">
+                                <span class="text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-trash-arrow-up text-rose-400"></i> Lixo para Aterro:</span>
+                                <span id="preview-landfill-kg" class="font-bold text-rose-400 font-mono">1.000 kg</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1 border-b border-slate-800/60">
+                                <span class="text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-coins text-amber-400"></i> Receita Prevista:</span>
+                                <span id="preview-revenue-ec" class="font-bold text-amber-400 font-mono">+0 EC</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1 border-b border-slate-800/60">
+                                <span class="text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-cloud-arrow-down text-eco-400"></i> CO₂ Evitado Est.:</span>
+                                <span id="preview-co2-kg" class="font-bold text-eco-400 font-mono">0 kg</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1">
+                                <span class="text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-droplet text-blue-400"></i> Água Salva Est.:</span>
+                                <span id="preview-water-l" class="font-bold text-blue-400 font-mono">0 L</span>
+                            </div>
+                        </div>
+
+                        <!-- Process Turn Button -->
+                        <button onclick="openQuizModal()" class="w-full py-3 sm:py-3.5 bg-eco-500 hover:bg-eco-400 text-slate-950 font-extrabold text-xs sm:text-base rounded-xl font-heading shadow-lg shadow-eco-500/20 transition-all cursor-pointer flex items-center justify-center gap-2">
+                            <span>AVANÇAR PARA DESAFIO IFA</span>
+                            <i class="fa-solid fa-brain"></i>
+                        </button>
+                    </div>
+
+                    <!-- TIPS & DISCIPLINE CORNER -->
+                    <div class="glass-card rounded-2xl p-3.5 sm:p-4 space-y-1.5 border-l-4 border-l-eco-500">
+                        <span class="text-[11px] sm:text-xs font-bold text-eco-400 font-heading uppercase flex items-center gap-1.5">
+                            <i class="fa-solid fa-lightbulb"></i> Dica do Projeto Integrador
+                        </span>
+                        <p class="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                            Resíduos orgânicos tratados no Hub de Biologia evitam a formação do gás Metano (CH₄), que é 25 vezes mais prejudicial para o efeito estufa do que o CO₂!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= MODAL DE QUIZ INTERDISCIPLINAR IFA ================= -->
+        <div id="modal-quiz" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div class="glass-card rounded-2xl sm:rounded-3xl max-w-xl w-full p-4 sm:p-6 space-y-4 border border-slate-700 shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-start border-b border-slate-800 pb-2.5">
+                    <div>
+                        <span id="quiz-discipline-tag" class="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded uppercase font-heading bg-math/20 text-math">
+                            Matemática
+                        </span>
+                        <h3 class="text-base sm:text-xl font-bold text-white font-heading mt-1">Desafio Interdisciplinar IFA</h3>
+                    </div>
+                    <span class="text-[10px] sm:text-xs font-bold text-amber-400 bg-amber-950/60 border border-amber-600/40 px-2 py-0.5 rounded-full shrink-0">
+                        +50 EC Bônus
+                    </span>
+                </div>
+
+                <p id="quiz-question-text" class="text-xs sm:text-base text-slate-200 font-medium leading-relaxed">
+                    Pergunta aqui...
+                </p>
+
+                <!-- Options List -->
+                <div id="quiz-options-container" class="space-y-2">
+                    <!-- Populated via JS -->
+                </div>
+
+                <!-- Explanation Feedback Box (Hidden initially) -->
+                <div id="quiz-feedback-box" class="hidden p-3.5 rounded-xl text-xs space-y-2">
+                    <div id="quiz-feedback-title" class="font-bold text-xs sm:text-sm font-heading"></div>
+                    <p id="quiz-feedback-text" class="leading-relaxed text-[11px] sm:text-xs"></p>
+                    <button onclick="confirmQuizAndExecuteTurn()" class="w-full py-2.5 bg-eco-500 text-slate-950 font-bold rounded-lg font-heading hover:bg-eco-400 transition-all cursor-pointer mt-2">
+                        Executar Processamento do Ano <i class="fa-solid fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TELA 3: RELATÓRIO FINAL & APRESENTAÇÃO DE NOTA 10 ================= -->
+        <section id="screen-report" class="hidden max-w-5xl mx-auto space-y-6 sm:space-y-8 py-3 sm:py-4">
+            <!-- STAGE CLEAR BANNER -->
+            <div class="glass-card rounded-2xl sm:rounded-3xl p-5 sm:p-8 text-center space-y-3.5 border border-eco-500/40 shadow-2xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 text-eco-500/10 text-8xl sm:text-9xl pointer-events-none">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <div class="inline-flex items-center gap-1.5 bg-eco-500 text-slate-950 font-black px-3 py-1 rounded-full text-[10px] sm:text-xs uppercase tracking-wider font-heading">
+                    <i class="fa-solid fa-circle-check"></i> SIMULAÇÃO CONCLUÍDA COM SUCESSO
+                </div>
+                <h1 class="text-2xl sm:text-5xl font-black text-white font-heading tracking-tight">
+                    Relatório Final do Projeto IFA
+                </h1>
+
+                <!-- Grade Badge -->
+                <div class="inline-block bg-slate-900 border-2 border-eco-500 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl shadow-xl">
+                    <span class="text-[10px] sm:text-xs text-slate-400 block uppercase font-bold tracking-widest">Avaliação Sugerida</span>
+                    <span class="text-xl sm:text-4xl font-black text-eco-400 font-heading">NOTA 10 / 10</span>
+                    <span class="text-[10px] sm:text-[11px] text-eco-300 block font-semibold">Projeto Integrador Aprovado com Louvor</span>
+                </div>
+            </div>
+
+            <!-- DYNAMIC GRAPH (CHART.JS) -->
+            <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 space-y-3.5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-white font-heading">Evolução Multianual dos Resíduos (Anos 1 a 5)</h3>
+                        <p class="text-xs text-slate-400">Comparativo: Total Gerado vs. Total Reciclado/Tratado</p>
+                    </div>
+                    <span class="text-xs font-semibold text-math bg-math/10 border border-math/30 px-2.5 py-1 rounded-full">
+                        <i class="fa-solid fa-chart-line"></i> Análise Gráfica
+                    </span>
+                </div>
+
+                <!-- Canvas Chart -->
+                <div class="relative w-full h-56 sm:h-80">
+                    <canvas id="finalImpactChart"></canvas>
+                </div>
+            </div>
+
+            <!-- CUMULATIVE SCIENTIFIC IMPACT METRICS -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+                <div class="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center border-t-4 border-t-blue-500 space-y-1">
+                    <i class="fa-solid fa-droplet text-blue-400 text-xl sm:text-2xl mb-1"></i>
+                    <span id="final-metric-water" class="text-base sm:text-2xl font-black text-white font-mono block">0 L</span>
+                    <span class="text-[9px] sm:text-[11px] text-slate-400 font-semibold uppercase">Água Economizada</span>
+                </div>
+                <div class="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center border-t-4 border-t-amber-400 space-y-1">
+                    <i class="fa-solid fa-bolt text-amber-400 text-xl sm:text-2xl mb-1"></i>
+                    <span id="final-metric-energy" class="text-base sm:text-2xl font-black text-white font-mono block">0 kWh</span>
+                    <span class="text-[9px] sm:text-[11px] text-slate-400 font-semibold uppercase">Energia Poupada</span>
+                </div>
+                <div class="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center border-t-4 border-t-eco-500 space-y-1">
+                    <i class="fa-solid fa-smog text-eco-400 text-xl sm:text-2xl mb-1"></i>
+                    <span id="final-metric-co2" class="text-base sm:text-2xl font-black text-white font-mono block">0 kg</span>
+                    <span class="text-[9px] sm:text-[11px] text-slate-400 font-semibold uppercase">CO₂ Evitado</span>
+                </div>
+                <div class="glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center border-t-4 border-t-bio space-y-1">
+                    <i class="fa-solid fa-wind text-bio text-xl sm:text-2xl mb-1"></i>
+                    <span id="final-metric-methane" class="text-base sm:text-2xl font-black text-white font-mono block">0 m³</span>
+                    <span class="text-[9px] sm:text-[11px] text-slate-400 font-semibold uppercase">Metano Capturado</span>
+                </div>
+            </div>
+
+            <!-- PRESENTATION CHEAT-SHEET FOR TEACHERS -->
+            <div class="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-3.5 border-l-4 border-l-eco-500">
+                <div class="flex items-center gap-2.5 border-b border-slate-800 pb-2.5">
+                    <i class="fa-solid fa-chalkboard-user text-eco-400 text-xl sm:text-2xl"></i>
+                    <div>
+                        <h3 class="text-base sm:text-lg font-bold text-white font-heading">Roteiro de Apresentação para os Professores</h3>
+                        <p class="text-xs text-slate-400">Pontos chaves para citar na defesa do seu grupo</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                        <span class="font-bold text-math font-heading flex items-center gap-1.5">
+                            <i class="fa-solid fa-calculator"></i> 1. Aplicação em Matemática
+                        </span>
+                        <p class="text-slate-300 leading-relaxed text-[11px] sm:text-xs">
+                            Cálculo direto de porcentagem de eficiência E = (Reciclado / Total) × 100, equações de lucro e otimização de custo por quilo de resíduo triado.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                        <span class="font-bold text-chem font-heading flex items-center gap-1.5">
+                            <i class="fa-solid fa-flask"></i> 2. Aplicação em Química
+                        </span>
+                        <p class="text-slate-300 leading-relaxed text-[11px] sm:text-xs">
+                            Identificação de polímeros (PET, PEAD, PVC), separação magnética de metais e fusão do vidro sem perda de integridade molecular no ciclo reverso.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                        <span class="font-bold text-bio font-heading flex items-center gap-1.5">
+                            <i class="fa-solid fa-leaf"></i> 3. Biologia & Sustentabilidade
+                        </span>
+                        <p class="text-slate-300 leading-relaxed text-[11px] sm:text-xs">
+                            Decomposição aeróbica em compostagem evitando a digestão anaeróbica que gera CH₄ e chorume contaminante nos lençóis freáticos.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESTART SIMULATION -->
+            <div class="text-center pt-2">
+                <button onclick="resetGame()" class="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 bg-eco-500 hover:bg-eco-400 text-slate-950 font-extrabold text-sm sm:text-base rounded-2xl font-heading shadow-xl transition-all cursor-pointer inline-flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>REINICIAR NOVA SIMULAÇÃO</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-3 text-center text-[10px] sm:text-xs text-slate-500 px-3">
+        <p>EcoCiclo • Projeto Integrador IFA (Ensino Médio 1º Ano) • Matemática, Química e Biologia Sustentável</p>
+    </footer>
+
+    <!-- ================= JAVASCRIPT SIMULATION ENGINE ================= -->
+    <script>
+        // --- DATA STRUCTURE FOR MATERIALS ---
+        const MATERIALS = [
+            { id: 'organic', name: 'Resíduo Orgânico', icon: 'fa-apple-whole', color: 'text-amber-600', border: 'border-amber-700', bg: 'bg-amber-950/40', hub: 'bio' },
+            { id: 'plastic', name: 'Plásticos (PET/PEAD)', icon: 'fa-bottle-water', color: 'text-rose-400', border: 'border-rose-700', bg: 'bg-rose-950/40', hub: 'chem' },
+            { id: 'paper', name: 'Papel & Papelão', icon: 'fa-newspaper', color: 'text-blue-400', border: 'border-blue-700', bg: 'bg-blue-950/40', hub: 'chem' },
+            { id: 'metal', name: 'Metais (Alumínio/Aço)', icon: 'fa-dumpster', color: 'text-amber-400', border: 'border-amber-600', bg: 'bg-amber-900/30', hub: 'chem' },
+            { id: 'glass', name: 'Vidro', icon: 'fa-wine-bottle', color: 'text-emerald-400', border: 'border-emerald-700', bg: 'bg-emerald-950/40', hub: 'chem' }
+        ];
+
+        // --- INTERDISCIPLINARY QUIZ POOL ---
+        const QUIZ_QUESTIONS = [
+            {
+                year: 1,
+                discipline: 'Matemática',
+                tagClass: 'bg-math/20 text-math',
+                question: 'Se a sua cidade gerou 1.000 kg de resíduos e você conseguiu reciclar 600 kg, qual é a Taxa de Eficiência (E) calculada pela fórmula E = (Reciclado / Total) × 100?',
+                options: [
+                    { text: 'A) 40%', correct: false },
+                    { text: 'B) 60%', correct: true },
+                    { text: 'C) 75%', correct: false },
+                    { text: 'D) 50%', correct: false }
+                ],
+                explanation: 'Exato! E = (600 / 1000) × 100 = 0.6 × 100 = 60%. Essa razão é fundamental na análise de projetos!'
+            },
+            {
+                year: 2,
+                discipline: 'Química',
+                tagClass: 'bg-chem/20 text-chem',
+                question: 'Qual das alternativas indica corretamente a vantagem química de reciclar latas de Alumínio em relação à extração primária?',
+                options: [
+                    { text: 'A) Economiza 95% da energia necessária para processar o minério Bauxita.', correct: true },
+                    { text: 'B) Transforma o alumínio em plástico biodegradável.', correct: false },
+                    { text: 'C) Altera a quantidade de prótons do átomo de alumínio.', correct: false },
+                    { text: 'D) Elimina completamente a necessidade de fundição.', correct: false }
+                ],
+                explanation: 'Perfeito! Reciclar alumínio exige apenas 5% da energia usada para fundir a Bauxita da natureza, reduzindo emissões drasticamente.'
+            },
+            {
+                year: 3,
+                discipline: 'Biologia',
+                tagClass: 'bg-bio/20 text-bio',
+                question: 'Por que a compostagem aeróbica de resíduos orgânicos é ambientalmente superior ao descarte direto em aterros comuns?',
+                options: [
+                    { text: 'A) Porque produz gás hélio para balões.', correct: false },
+                    { text: 'B) Porque evita a digestão anaeróbica que gera o gás Metano (CH₄) e o chorume.', correct: true },
+                    { text: 'C) Porque impede o crescimento de qualquer bactéria no solo.', correct: false },
+                    { text: 'D) Porque transforma cascas de frutas em vidro mineral.', correct: false }
+                ],
+                explanation: 'Excelente! A decomposição com oxigênio (aeróbica) produz Húmus rico e CO₂ equilibrado, evitando o Metano (CH₄) que é 25x mais estufa!'
+            },
+            {
+                year: 4,
+                discipline: 'Matemática',
+                tagClass: 'bg-math/20 text-math',
+                question: 'A usina de triagem investiu 30 EC e aumentou a receita de reciclagem em 20%. Se a receita anterior era 150 EC, qual a nova receita?',
+                options: [
+                    { text: 'A) 160 EC', correct: false },
+                    { text: 'B) 170 EC', correct: false },
+                    { text: 'C) 180 EC', correct: true },
+                    { text: 'D) 200 EC', correct: false }
+                ],
+                explanation: 'Correto! 20% de 150 EC é (0.20 × 150) = 30 EC. Portanto, 150 + 30 = 180 EC!'
+            },
+            {
+                year: 5,
+                discipline: 'Química / Biologia',
+                tagClass: 'bg-chem/20 text-chem',
+                question: 'Polímeros do tipo PET (Polietileno Tereftalato) pertencem a qual categoria de plásticos na triagem química?',
+                options: [
+                    { text: 'A) Código 1 - Termoplástico totalmente reciclável.', correct: true },
+                    { text: 'B) Código 7 - Plástico não reciclável.', correct: false },
+                    { text: 'C) Liga Metálica Ferrosa.', correct: false },
+                    { text: 'D) Composto Inorgânico Solúvel.', correct: false }
+                ],
+                explanation: 'Isso aí! O PET é o plástico de número 1, um termoplástico amplamente reutilizado em fibras têxteis e novas embalagens.'
+            }
+        ];
+
+        // --- GAME STATE ---
+        let gameState = {
+            year: 1,
+            maxYears: 5,
+            ec: 100,
+            score: 50,
+            landfillSaturation: 20,
+            hubs: { bio: 1, chem: 1, math: 1 },
+            allocations: { organic: 0, plastic: 0, paper: 0, metal: 0, glass: 0 },
+            history: [],
+            quizAnswered: false,
+            quizBonusEC: 0
+        };
+
+        let chartInstance = null;
+
+        // --- SYNTHESIZED SOUND EFFECTS (WEB AUDIO API) ---
+        function playSound(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                if (type === 'upgrade') {
+                    osc.frequency.setValueAtTime(300, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.15);
+                } else if (type === 'correct') {
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.2);
+                } else if (type === 'click') {
+                    osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.05);
+                } else if (type === 'victory') {
+                    [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g);
+                        g.connect(ctx.destination);
+                        o.frequency.setValueAtTime(freq, ctx.currentTime + (idx * 0.08));
+                        g.gain.setValueAtTime(0.1, ctx.currentTime + (idx * 0.08));
+                        o.start(ctx.currentTime + (idx * 0.08));
+                        o.stop(ctx.currentTime + (idx * 0.08) + 0.15);
+                    });
+                }
+            } catch(e){}
+        }
+
+        // --- NAVIGATION ---
+        function showScreen(id) {
+            ['screen-intro', 'screen-game', 'screen-report'].forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(id).classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
+
+        function startGame() {
+            playSound('click');
+            gameState.year = 1;
+            gameState.ec = 100;
+            gameState.score = 50;
+            gameState.landfillSaturation = 20;
+            gameState.hubs = { bio: 1, chem: 1, math: 1 };
+            gameState.history = [];
+            renderYearState();
+            showScreen('screen-game');
+        }
+
+        // --- RENDER YEAR MANAGEMENT STATE ---
+        function renderYearState() {
+            const currentWasteGenerated = 1000 + (gameState.year - 1) * 200;
+
+            document.getElementById('stat-ec-head').innerText = `${gameState.ec} EC`;
+            document.getElementById('stat-score-head').innerText = `${gameState.score} / 100`;
+            document.getElementById('stat-year-head').innerText = `${gameState.year} de 5`;
+            document.getElementById('display-current-year').innerText = `Ano ${gameState.year}`;
+            document.getElementById('display-total-waste').innerText = `${currentWasteGenerated.toLocaleString()} kg`;
+            document.getElementById('display-ec-balance').innerText = `${gameState.ec} EC`;
+            document.getElementById('display-landfill-pct').innerText = `${Math.min(100, Math.round(gameState.landfillSaturation))}%`;
+            document.getElementById('display-landfill-bar').style.width = `${Math.min(100, Math.round(gameState.landfillSaturation))}%`;
+
+            document.getElementById('lvl-bio').innerText = `Nível ${gameState.hubs.bio}`;
+            document.getElementById('lvl-chem').innerText = `Nível ${gameState.hubs.chem}`;
+            document.getElementById('lvl-math').innerText = `Nível ${gameState.hubs.math}`;
+
+            renderAllocationSliders(currentWasteGenerated);
+            calculateLiveMetrics();
+        }
+
+        function getMaxProcessingCapacity() {
+            return (gameState.hubs.bio + gameState.hubs.chem) * 250;
+        }
+
+        function renderAllocationSliders(totalWaste) {
+            const container = document.getElementById('materials-allocation-list');
+            container.innerHTML = '';
+            const categoryWasteAmount = Math.round(totalWaste / 5);
+
+            MATERIALS.forEach(mat => {
+                const currentVal = gameState.allocations[mat.id] || 0;
+                const row = document.createElement('div');
+                row.className = `bg-slate-900 border ${mat.border} p-2.5 sm:p-3 rounded-xl space-y-1.5`;
+                row.innerHTML = `
+                    <div class="flex flex-wrap justify-between items-center text-xs gap-1">
+                        <span class="font-bold text-slate-100 flex items-center gap-1.5 font-heading">
+                            <i class="fa-solid ${mat.icon} ${mat.color}"></i> ${mat.name}
+                        </span>
+                        <span class="text-slate-400 font-mono text-[11px] sm:text-xs">
+                            Gerado: <strong class="text-slate-200">${categoryWasteAmount} kg</strong> | Tratando: <strong class="text-eco-400" id="val-alloc-${mat.id}">${currentVal} kg</strong>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-3 pt-0.5">
+                        <input type="range" min="0" max="${categoryWasteAmount}" step="10" value="${currentVal}"
+                            oninput="updateAllocation('${mat.id}', this.value)"
+                            class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-eco-500">
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function updateAllocation(matId, val) {
+            gameState.allocations[matId] = parseInt(val) || 0;
+            document.getElementById(`val-alloc-${matId}`).innerText = `${val} kg`;
+            calculateLiveMetrics();
+        }
+
+        // --- LIVE FORMULA & METRICS CALCULATOR ---
+        function calculateLiveMetrics() {
+            const currentWasteGenerated = 1000 + (gameState.year - 1) * 200;
+
+            let totalAllocated = 0;
+            Object.values(gameState.allocations).forEach(v => totalAllocated += v);
+            const maxCap = getMaxProcessingCapacity();
+            document.getElementById('total-capacity-used').innerText = `${totalAllocated} / ${maxCap} kg`;
+
+            const efficiencyPct = (totalAllocated / currentWasteGenerated) * 100;
+            document.getElementById('formula-recycled-val').innerText = totalAllocated;
+            document.getElementById('formula-total-val').innerText = currentWasteGenerated;
+            document.getElementById('formula-result-pct').innerText = `${efficiencyPct.toFixed(1)}%`;
+
+            const landfillKg = Math.max(0, currentWasteGenerated - totalAllocated);
+            const mathMultiplier = 1 + (gameState.hubs.math * 0.2);
+            const estimatedRevenue = Math.round((totalAllocated * 0.12) * mathMultiplier);
+            const estCO2 = Math.round(totalAllocated * 0.85);
+            const estWater = Math.round(totalAllocated * 12);
+
+            document.getElementById('preview-landfill-kg').innerText = `${landfillKg.toLocaleString()} kg`;
+            document.getElementById('preview-revenue-ec').innerText = `+${estimatedRevenue} EC`;
+            document.getElementById('preview-co2-kg').innerText = `${estCO2.toLocaleString()} kg`;
+            document.getElementById('preview-water-l').innerText = `${estWater.toLocaleString()} L`;
+        }
+
+        function upgradeHub(hubType) {
+            const cost = 30;
+            if (gameState.ec >= cost) {
+                gameState.ec -= cost;
+                gameState.hubs[hubType]++;
+                playSound('upgrade');
+                renderYearState();
+            } else {
+                alertModal('EcoCoins Insuficientes', 'Você precisa de pelo menos 30 EC para evoluir este Hub de Tecnologia.');
+            }
+        }
+
+        // --- QUIZ MODAL LOGIC ---
+        function openQuizModal() {
+            playSound('click');
+            const modal = document.getElementById('modal-quiz');
+            const qData = QUIZ_QUESTIONS.find(q => q.year === gameState.year) || QUIZ_QUESTIONS[0];
+            document.getElementById('quiz-discipline-tag').innerText = qData.discipline;
+            document.getElementById('quiz-discipline-tag').className = `text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded uppercase font-heading ${qData.tagClass}`;
+            document.getElementById('quiz-question-text').innerText = qData.question;
+            const optsContainer = document.getElementById('quiz-options-container');
+            optsContainer.innerHTML = '';
+            document.getElementById('quiz-feedback-box').classList.add('hidden');
+
+            qData.options.forEach((opt) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left p-2.5 sm:p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs sm:text-sm font-semibold text-slate-200 transition-all cursor-pointer';
+                btn.innerText = opt.text;
+                btn.onclick = () => handleQuizAnswer(opt.correct, qData.explanation);
+                optsContainer.appendChild(btn);
+            });
+            modal.classList.remove('hidden');
+        }
+
+        function handleQuizAnswer(isCorrect, explanation) {
+            const feedbackBox = document.getElementById('quiz-feedback-box');
+            const feedbackTitle = document.getElementById('quiz-feedback-title');
+            const feedbackText = document.getElementById('quiz-feedback-text');
+
+            if (isCorrect) {
+                playSound('correct');
+                gameState.ec += 50;
+                gameState.score = Math.min(100, gameState.score + 10);
+                feedbackTitle.className = "font-bold text-xs sm:text-sm font-heading text-eco-400";
+                feedbackTitle.innerText = "Resposta Correta! (+50 EC & +10 EcoScore)";
+                feedbackBox.className = "p-3.5 rounded-xl text-xs space-y-2 bg-eco-950/80 border border-eco-500/50 text-slate-200";
+            } else {
+                playSound('click');
+                feedbackTitle.className = "font-bold text-xs sm:text-sm font-heading text-rose-400";
+                feedbackTitle.innerText = "Resposta Incorreta (Sem Bônus)";
+                feedbackBox.className = "p-3.5 rounded-xl text-xs space-y-2 bg-rose-950/80 border border-rose-500/50 text-slate-200";
+            }
+            feedbackText.innerText = explanation;
+            feedbackBox.classList.remove('hidden');
+        }
+
+        function confirmQuizAndExecuteTurn() {
+            document.getElementById('modal-quiz').classList.add('hidden');
+            executeTurnProcessing();
+        }
+
+        // --- EXECUTE YEAR-END PROCESSING ---
+        function executeTurnProcessing() {
+            const currentWasteGenerated = 1000 + (gameState.year - 1) * 200;
+            let totalRecycled = 0;
+            Object.values(gameState.allocations).forEach(v => totalRecycled += v);
+            const landfillKg = Math.max(0, currentWasteGenerated - totalRecycled);
+
+            const mathMultiplier = 1 + (gameState.hubs.math * 0.2);
+            const revenueEC = Math.round((totalRecycled * 0.12) * mathMultiplier);
+            gameState.ec += revenueEC;
+
+            const newLandfillSaturation = Math.max(0, gameState.landfillSaturation + (landfillKg / currentWasteGenerated * 15) - (totalRecycled / currentWasteGenerated * 10));
+            gameState.landfillSaturation = Math.min(100, newLandfillSaturation);
+
+            gameState.history.push({
+                year: gameState.year,
+                generated: currentWasteGenerated,
+                recycled: totalRecycled,
+                landfill: landfillKg,
+                waterSaved: totalRecycled * 12,
+                energySaved: totalRecycled * 1.5,
+                co2Saved: totalRecycled * 0.85,
+                methaneSaved: (gameState.allocations.organic || 0) * 0.4
+            });
+
+            gameState.allocations = { organic: 0, plastic: 0, paper: 0, metal: 0, glass: 0 };
+
+            if (gameState.year < gameState.maxYears) {
+                gameState.year++;
+                renderYearState();
+            } else {
+                showFinalReport();
+            }
+        }
+
+        // --- FINAL REPORT & CHART.JS GRAPH ---
+        function showFinalReport() {
+            playSound('victory');
+            showScreen('screen-report');
+
+            let totalWater = 0;
+            let totalEnergy = 0;
+            let totalCO2 = 0;
+            let totalMethane = 0;
+
+            gameState.history.forEach(h => {
+                totalWater += h.waterSaved;
+                totalEnergy += h.energySaved;
+                totalCO2 += h.co2Saved;
+                totalMethane += h.methaneSaved;
+            });
+
+            document.getElementById('final-metric-water').innerText = `${Math.round(totalWater).toLocaleString()} L`;
+            document.getElementById('final-metric-energy').innerText = `${Math.round(totalEnergy).toLocaleString()} kWh`;
+            document.getElementById('final-metric-co2').innerText = `${Math.round(totalCO2).toLocaleString()} kg`;
+            document.getElementById('final-metric-methane').innerText = `${Math.round(totalMethane).toLocaleString()} m³`;
+
+            renderImpactChart();
+        }
+
+        function renderImpactChart() {
+            const ctx = document.getElementById('finalImpactChart').getContext('2d');
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            const yearsLabels = gameState.history.map(h => `Ano ${h.year}`);
+            const generatedData = gameState.history.map(h => h.generated);
+            const recycledData = gameState.history.map(h => h.recycled);
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: yearsLabels,
+                    datasets: [
+                        {
+                            label: 'Resíduos Gerados (kg)',
+                            data: generatedData,
+                            backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                            borderColor: '#ef4444',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Resíduos Reciclados/Tratados (kg)',
+                            data: recycledData,
+                            backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                            borderColor: '#22c55e',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#f8fafc',
+                                font: { family: 'Poppins', size: 11 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function resetGame() {
+            showScreen('screen-intro');
+        }
+
+        function alertModal(title, text) {
+            alert(`${title}\n\n${text}`);
+        }
+    </script>
+</body>
+</html>
