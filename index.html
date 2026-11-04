@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Five Nights at Freddy's 3D - Universal Mobile & Desktop Edition</title>
+    <!-- Tailwind CSS for Responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Custom horror aesthetic and touch tweaks -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=VT323&family=Creepster&family=Share+Tech+Mono&display=swap');
+
+        * {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Share Tech Mono', monospace;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #game-canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* CRT Overlay Effect */
+        .crt::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 20;
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+        }
+
+        /* Screen Shake Animation for Jumpscares */
+        .jumpscare-shake {
+            animation: shake 0.05s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(2px, 2px) rotate(0deg); }
+            20% { transform: translate(-4px, 0px) rotate(1deg); }
+            40% { transform: translate(2px, -2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 2px) rotate(0deg); }
+            80% { transform: translate(3px, 1px) rotate(1deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        /* Static Canvas Overlay */
+        #static-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.12;
+            z-index: 25;
+        }
+
+        /* Custom Scrollbar & Buttons */
+        .cam-btn {
+            transition: all 0.15s ease;
+            box-shadow: 0 0 5px rgba(0,255,0,0.3);
+        }
+
+        .cam-btn.active {
+            background-color: #22c55e !important;
+            color: #000 !important;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.8);
+        }
+
+        .font-horror {
+            font-family: 'Creepster', cursive;
+        }
+
+        .font-digital {
+            font-family: 'VT323', monospace;
+        }
+
+        .door-ctrl-btn {
+            border: 2px solid #444;
+            transition: transform 0.1s active, background-color 0.2s;
+        }
+
+        .door-ctrl-btn:active {
+            transform: scale(0.92);
+        }
+    </style>
+</head>
+<body class="crt relative bg-black text-white overflow-hidden select-none">
+
+    <!-- Canvas for 3D Game Render -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Canvas for Static/Grain Overlay -->
+    <canvas id="static-canvas"></canvas>
+
+    <!-- MAIN MENU OVERLAY -->
+    <div id="main-menu" class="absolute inset-0 bg-black z-50 flex flex-col justify-between p-6 sm:p-12 md:p-16">
+        <div class="space-y-2 sm:space-y-4">
+            <h1 class="text-4xl sm:text-7xl md:text-8xl font-horror text-red-600 tracking-wider drop-shadow-[0_5px_15px_rgba(255,0,0,0.5)] leading-none">
+                FIVE NIGHTS AT FREDDY'S
+            </h1>
+            <p class="text-base sm:text-2xl text-gray-400 font-digital tracking-widest">3D SURVIVAL SIMULATOR (MOBILE & PC)</p>
+        </div>
+
+        <div class="max-w-md space-y-3 sm:space-y-4">
+            <button id="btn-start-game" class="w-full py-3 sm:py-4 text-xl sm:text-2xl font-bold bg-red-900/40 hover:bg-red-800/80 border-2 border-red-600 text-red-100 rounded transition duration-200 tracking-wider hover:shadow-[0_0_20px_rgba(220,38,38,0.7)]">
+                NEW GAME (NIGHT 1)
+            </button>
+            <button id="btn-how-to-play" class="w-full py-2.5 sm:py-3 text-base sm:text-lg bg-gray-900/60 hover:bg-gray-800 border border-gray-600 text-gray-300 rounded transition duration-200">
+                HOW TO PLAY
+            </button>
+        </div>
+
+        <div class="text-xs sm:text-sm text-gray-600 flex justify-between">
+            <span>v2.0.0 - Universal Edition</span>
+            <span>Fazbear Entertainment &copy; 1993</span>
+        </div>
+    </div>
+
+    <!-- HOW TO PLAY MODAL -->
+    <div id="modal-instructions" class="hidden absolute inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border-2 border-red-700 max-w-2xl p-5 sm:p-8 rounded-lg space-y-4 text-gray-300 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl sm:text-3xl font-bold text-red-500 border-b border-red-900 pb-2">SURVIVAL GUIDE</h2>
+            <ul class="space-y-2.5 text-xs sm:text-base list-disc list-inside">
+                <li><strong class="text-white">Pan Camera:</strong> Move your mouse or drag horizontally on mobile screens to look around the office.</li>
+                <li><strong class="text-white">Doors & Lights:</strong> Use the side controls or physical wall buttons to switch door lights or seal doors.</li>
+                <li><strong class="text-white">Monitor Tablet:</strong> Tap/click the bottom bar to open security feeds (CAM 1A, 1B, 1C, 2A, 4A, 5) and track movement.</li>
+                <li><strong class="text-white">Power Management:</strong> Doors, lights, and cameras drain battery. Reach <span class="text-yellow-400">0%</span> and you will be left in total darkness.</li>
+                <li><strong class="text-white">Objective:</strong> Survive from <span class="text-green-400">12:00 AM to 6:00 AM</span>.</li>
+            </ul>
+            <button id="btn-close-modal" class="w-full py-3 bg-red-700 hover:bg-red-600 text-white font-bold rounded text-sm sm:text-base">
+                GOT IT - BACK TO MENU
+            </button>
+        </div>
+    </div>
+
+    <!-- NIGHT INTRO CARD -->
+    <div id="night-intro" class="hidden absolute inset-0 bg-black z-40 flex flex-col items-center justify-center space-y-3">
+        <h2 class="text-6xl sm:text-8xl font-digital text-white tracking-widest" id="night-intro-title">12:00 AM</h2>
+        <p class="text-2xl sm:text-3xl text-gray-400 tracking-wider">1st Night</p>
+    </div>
+
+    <!-- HUD OVERLAY (In Game) -->
+    <div id="hud-overlay" class="hidden pointer-events-none absolute inset-0 z-30 flex flex-col justify-between p-3 sm:p-6">
+        <!-- Top Info Bar -->
+        <div class="flex justify-between items-start">
+            <!-- Power Meter -->
+            <div class="bg-black/80 border border-gray-700 p-2.5 sm:p-3 rounded text-xs sm:text-base space-y-1 backdrop-blur-sm pointer-events-auto shadow-md">
+                <div class="flex items-center space-x-2">
+                    <span class="text-gray-400">POWER:</span>
+                    <span id="hud-power-val" class="text-lg sm:text-2xl font-bold text-green-400">100%</span>
+                </div>
+                <div class="flex items-center space-x-1.5">
+                    <span class="text-gray-400 text-xs">USAGE:</span>
+                    <div id="hud-usage-bars" class="flex space-x-1">
+                        <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 bg-green-500 rounded-sm"></div>
+                        <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 bg-gray-800 rounded-sm"></div>
+                        <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 bg-gray-800 rounded-sm"></div>
+                        <div class="w-2.5 h-3.5 sm:w-3 sm:h-4 bg-gray-800 rounded-sm"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clock -->
+            <div class="bg-black/80 border border-gray-700 p-2.5 sm:p-3 rounded text-right backdrop-blur-sm shadow-md">
+                <div id="hud-time" class="text-2xl sm:text-4xl font-digital text-white tracking-wider">12 AM</div>
+                <div class="text-[10px] sm:text-xs text-gray-400">NIGHT 1</div>
+            </div>
+        </div>
+
+        <!-- Touch Controls Side Panels for Left/Right Office -->
+        <div class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 flex flex-col space-y-2 sm:space-y-3 pointer-events-auto">
+            <button id="ui-btn-left-door" class="door-ctrl-btn px-3 sm:px-4 py-2.5 sm:py-3 bg-red-950/80 hover:bg-red-900 border border-red-600 text-red-200 text-[10px] sm:text-xs font-bold rounded-lg shadow-lg backdrop-blur">
+                L. DOOR
+            </button>
+            <button id="ui-btn-left-light" class="door-ctrl-btn px-3 sm:px-4 py-2.5 sm:py-3 bg-yellow-950/80 hover:bg-yellow-900 border border-yellow-600 text-yellow-200 text-[10px] sm:text-xs font-bold rounded-lg shadow-lg backdrop-blur">
+                L. LIGHT
+            </button>
+        </div>
+
+        <div class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 flex flex-col space-y-2 sm:space-y-3 pointer-events-auto">
+            <button id="ui-btn-right-door" class="door-ctrl-btn px-3 sm:px-4 py-2.5 sm:py-3 bg-red-950/80 hover:bg-red-900 border border-red-600 text-red-200 text-[10px] sm:text-xs font-bold rounded-lg shadow-lg backdrop-blur">
+                R. DOOR
+            </button>
+            <button id="ui-btn-right-light" class="door-ctrl-btn px-3 sm:px-4 py-2.5 sm:py-3 bg-yellow-950/80 hover:bg-yellow-900 border border-yellow-600 text-yellow-200 text-[10px] sm:text-xs font-bold rounded-lg shadow-lg backdrop-blur">
+                R. LIGHT
+            </button>
+        </div>
+
+        <!-- Monitor Flip Button Bar -->
+        <div class="w-full flex justify-center pb-1 sm:pb-2 pointer-events-auto">
+            <button id="btn-toggle-monitor" class="w-56 sm:w-80 md:w-96 py-2.5 sm:py-3 bg-gray-900/90 hover:bg-gray-800 border-2 border-gray-500 rounded-t-lg text-gray-200 text-xs sm:text-sm font-bold tracking-widest flex items-center justify-center space-x-2 transition hover:border-green-500 backdrop-blur shadow-xl">
+                <svg class="w-4 h-4 sm:w-5 sm:h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <span>MONITOR TABLET</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- SECURITY MONITOR OVERLAY (CAM PANEL) -->
+    <div id="monitor-overlay" class="hidden absolute inset-0 z-30 bg-black/50 flex flex-col justify-between p-3 sm:p-6 md:p-8 pointer-events-auto">
+        <!-- Top Camera Header -->
+        <div class="flex justify-between items-center bg-black/90 p-2.5 sm:p-3 rounded border border-green-900 shadow-md">
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-600 animate-pulse"></span>
+                <span id="cam-title-display" class="text-sm sm:text-xl font-bold text-green-400 tracking-wider">CAM 1A - SHOW STAGE</span>
+            </div>
+            <div class="text-[10px] sm:text-xs text-gray-400 font-mono">REC ●</div>
+        </div>
+
+        <!-- Map & Camera Selection Buttons -->
+        <div class="self-end bg-black/90 border border-green-900/80 p-3 sm:p-4 rounded-lg w-60 sm:w-72 md:w-80 backdrop-blur-md space-y-2">
+            <div class="text-[10px] sm:text-xs text-green-500 font-bold border-b border-green-900 pb-1">MAP SELECT</div>
+            
+            <div class="grid grid-cols-3 gap-1.5 sm:gap-2 text-[10px] sm:text-xs">
+                <button data-cam="1A" class="cam-btn p-1.5 sm:p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-green-400 rounded col-span-3">CAM 1A: Show Stage</button>
+                <button data-cam="1B" class="cam-btn p-1.5 sm:p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-green-400 rounded col-span-2">CAM 1B: Dining</button>
+                <button data-cam="5"  class="cam-btn p-1.5 sm:p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-green-400 rounded">CAM 5: Back</button>
+                <button data-cam="1C" class="cam-btn p-1.5 sm:p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-green-400 rounded col-span-3">CAM 1C: Cove</button>
+                <button data-cam="2A" class="cam-btn p-1.5 sm:p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-green-400 rounded col-span-1 text-left">CAM 2A</button>
+                <div class="col-span-1 text-center py-1 text-[9px] sm:text-[10px] text-gray-500 flex items-center justify-center border border-gray-800 rounded">YOU</div>
+                <button data-cam="4A" class="cam-btn p-1.5 sm:p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-green-400 rounded col-span-1 text-right">CAM 4A</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER OVERLAY -->
+    <div id="game-over-screen" class="hidden absolute inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 space-y-6">
+        <h1 class="text-6xl sm:text-8xl md:text-9xl font-horror text-red-600 tracking-widest animate-pulse text-center">GAME OVER</h1>
+        <p id="game-over-reason" class="text-lg sm:text-2xl text-gray-400 font-digital text-center">YOU WERE STUFFED INTO A SUIT...</p>
+        <button id="btn-retry" class="px-6 sm:px-8 py-3 sm:py-4 bg-red-900 hover:bg-red-800 text-white font-bold rounded text-lg sm:text-xl tracking-wider transition border border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.5)]">
+            TRY AGAIN
+        </button>
+    </div>
+
+    <!-- 6 AM VICTORY OVERLAY -->
+    <div id="victory-screen" class="hidden absolute inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 space-y-6">
+        <div class="text-center space-y-2">
+            <h1 id="victory-clock" class="text-7xl sm:text-9xl font-digital text-green-400 tracking-widest animate-bounce">6:00 AM</h1>
+            <p class="text-2xl sm:text-3xl text-yellow-400 font-bold tracking-wider">GREAT JOB!</p>
+            <p class="text-sm sm:text-base text-gray-400">You survived Night 1.</p>
+        </div>
+        <button id="btn-victory-main" class="px-6 sm:px-8 py-3 sm:py-4 bg-green-700 hover:bg-green-600 text-white font-bold rounded text-lg sm:text-xl tracking-wider transition border border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.5)]">
+            MAIN MENU
+        </button>
+    </div>
+
+    <!-- MAIN GAME SCRIPT -->
+    <script>
+        /* =========================================================================
+           WEB AUDIO API SYNTHESIZER
+           ========================================================================= */
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.fanNode = null;
+                this.fanGain = null;
+                this.isInitialized = false;
+            }
+
+            init() {
+                if (this.isInitialized) return;
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                    this.isInitialized = true;
+                    this.startFanHum();
+                } catch (e) {
+                    console.warn("Audio Context failed:", e);
+                }
+            }
+
+            startFanHum() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 2;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                noise.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 180;
+
+                this.fanGain = this.ctx.createGain();
+                this.fanGain.gain.value = 0.12;
+
+                noise.connect(filter);
+                filter.connect(this.fanGain);
+                this.fanGain.connect(this.ctx.destination);
+                noise.start();
+                this.fanNode = noise;
+            }
+
+            setFanVolume(val) {
+                if (this.fanGain) this.fanGain.gain.setValueAtTime(val, this.ctx.currentTime);
+            }
+
+            playDoorSound() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.4);
+
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            }
+
+            playLightSwitch() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            }
+
+            playFootstep() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(80, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.25);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+
+            playFreddyLaugh() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                [0, 0.15, 0.3].forEach((delay, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(110 - idx * 10, now + delay);
+                    osc.frequency.exponentialRampToValueAtTime(60, now + delay + 0.12);
+
+                    gain.gain.setValueAtTime(0.25, now + delay);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.12);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + delay);
+                    osc.stop(now + delay + 0.12);
+                });
+            }
+
+            playJumpscare() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc1 = this.ctx.createOscillator();
+                const gain1 = this.ctx.createGain();
+                osc1.type = 'sawtooth';
+                osc1.frequency.setValueAtTime(400, now);
+                osc1.frequency.linearRampToValueAtTime(1200, now + 0.1);
+                osc1.frequency.linearRampToValueAtTime(300, now + 1.2);
+                gain1.gain.setValueAtTime(0.7, now);
+                gain1.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+
+                const bufferSize = this.ctx.sampleRate * 1.5;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const noiseGain = this.ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.6, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+
+                osc1.connect(gain1);
+                gain1.connect(this.ctx.destination);
+                noise.connect(noiseGain);
+                noiseGain.connect(this.ctx.destination);
+
+                osc1.start(now);
+                noise.start(now);
+                osc1.stop(now + 1.5);
+                noise.stop(now + 1.5);
+            }
+
+            playToreadorMarch(onComplete) {
+                if (!this.ctx) return;
+                const notes = [
+                    { f: 370, d: 0.3 }, { f: 440, d: 0.3 }, { f: 392, d: 0.3 }, { f: 370, d: 0.3 },
+                    { f: 330, d: 0.3 }, { f: 370, d: 0.3 }, { f: 392, d: 0.4 }, { f: 330, d: 0.4 }
+                ];
+                let time = this.ctx.currentTime;
+                notes.forEach(n => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(n.f, time);
+                    gain.gain.setValueAtTime(0.2, time);
+                    gain.gain.exponentialRampToValueAtTime(0.001, time + n.d);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(time);
+                    osc.stop(time + n.d);
+                    time += n.d + 0.05;
+                });
+
+                if (onComplete) {
+                    setTimeout(onComplete, (time - this.ctx.currentTime) * 1000 + 500);
+                }
+            }
+
+            play6AMCheer() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.15);
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.15 + 1.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.15);
+                    osc.stop(now + idx * 0.15 + 1.2);
+                });
+            }
+        }
+
+        const sound = new SoundEngine();
+
+        /* =========================================================================
+           THREE.JS WORLD SETUP & RESPONSIVE CAMERA CONTROL
+           ========================================================================= */
+        const canvas = document.getElementById('game-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020202, 0.04);
+
+        // Adjust Camera FOV dynamically based on screen aspect ratio
+        const initialAspect = window.innerWidth / window.innerHeight;
+        const camera = new THREE.PerspectiveCamera(initialAspect < 1 ? 80 : 65, initialAspect, 0.1, 100);
+        camera.position.set(0, 0, 2);
+
+        // Responsive Panning Controls (Touch & Mouse)
+        let targetRotationY = 0, currentRotationY = 0;
+        const maxPanAngle = 0.7; // Limit horizontal panning
+
+        window.addEventListener('mousemove', (e) => {
+            if (gameState.isMonitorOpen || gameState.isGameOver) return;
+            const normX = (e.clientX / window.innerWidth) * 2 - 1;
+            targetRotationY = -normX * maxPanAngle;
+        });
+
+        // Touch Drag Panning
+        let touchStartX = 0;
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+            if (gameState.isMonitorOpen || gameState.isGameOver || e.touches.length === 0) return;
+            const deltaX = e.touches[0].clientX - touchStartX;
+            targetRotationY = Math.max(-maxPanAngle, Math.min(maxPanAngle, targetRotationY + deltaX * 0.004));
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+
+        /* =========================================================================
+           MATERIALS & ENVIRONMENT
+           ========================================================================= */
+        function createCheckerTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#111'; ctx.fillRect(0,0,256,256);
+            ctx.fillStyle = '#222';
+            for (let i=0; i<8; i++) {
+                for (let j=0; j<8; j++) {
+                    if ((i+j)%2 === 0) ctx.fillRect(i*32, j*32, 32, 32);
+                }
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(4, 4);
+            return texture;
+        }
+
+        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x1f1f24, roughness: 0.8 });
+        const floorMaterial = new THREE.MeshStandardMaterial({ map: createCheckerTexture(), roughness: 0.4 });
+        const deskMaterial = new THREE.MeshStandardMaterial({ color: 0x2b1d0c, roughness: 0.6 });
+        const metalMaterial = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.8, roughness: 0.3 });
+
+        // 1. OFFICE ROOM BUILD
+        const officeGroup = new THREE.Group();
+        scene.add(officeGroup);
+
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 10), floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -2;
+        officeGroup.add(floor);
+
+        const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(12, 10), wallMaterial);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.y = 3;
+        officeGroup.add(ceiling);
+
+        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(12, 5), wallMaterial);
+        backWall.position.set(0, 0.5, -5);
+        officeGroup.add(backWall);
+
+        const desk = new THREE.Mesh(new THREE.BoxGeometry(7, 1.2, 2.5), deskMaterial);
+        desk.position.set(0, -1.4, -3.2);
+        desk.castShadow = true;
+        desk.receiveShadow = true;
+        officeGroup.add(desk);
+
+        // Animated Desk Fan
+        const fanGroup = new THREE.Group();
+        fanGroup.position.set(-1.8, -0.7, -3.0);
+        const fanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.1, 16), metalMaterial);
+        const fanStand = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8), metalMaterial);
+        fanStand.position.y = 0.25;
+        const fanBlades = new THREE.Group();
+        fanBlades.position.y = 0.45;
+        for (let i = 0; i < 3; i++) {
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.01), metalMaterial);
+            blade.rotation.z = (i * Math.PI * 2) / 3;
+            fanBlades.add(blade);
+        }
+        fanGroup.add(fanBase, fanStand, fanBlades);
+        officeGroup.add(fanGroup);
+
+        // Doors & Frames
+        const leftDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4.5, 2), metalMaterial);
+        leftDoorMesh.position.set(-4.9, 0.25, -0.5);
+        officeGroup.add(leftDoorMesh);
+
+        const rightDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 4.5, 2), metalMaterial);
+        rightDoorMesh.position.set(4.9, 0.25, -0.5);
+        officeGroup.add(rightDoorMesh);
+
+        // Lights
+        const officeAmbientLight = new THREE.AmbientLight(0x222233, 0.4);
+        scene.add(officeAmbientLight);
+
+        const officeCeilingLight = new THREE.PointLight(0xffddaa, 1.2, 12);
+        officeCeilingLight.position.set(0, 2.5, -1);
+        officeCeilingLight.castShadow = true;
+        scene.add(officeCeilingLight);
+
+        const leftHallLight = new THREE.SpotLight(0xffffff, 0, 15, Math.PI / 4, 0.5);
+        leftHallLight.position.set(-5.5, 1, -0.5);
+        leftHallLight.target.position.set(-8, -1, -0.5);
+        scene.add(leftHallLight, leftHallLight.target);
+
+        const rightHallLight = new THREE.SpotLight(0xffffff, 0, 15, Math.PI / 4, 0.5);
+        rightHallLight.position.set(5.5, 1, -0.5);
+        rightHallLight.target.position.set(8, -1, -0.5);
+        scene.add(rightHallLight, rightHallLight.target);
+
+        // Hallways
+        const leftHallway = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 3), wallMaterial);
+        leftHallway.position.set(-8, 0, -0.5);
+        const rightHallway = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 3), wallMaterial);
+        rightHallway.position.set(8, 0, -0.5);
+        officeGroup.add(leftHallway, rightHallway);
+
+        // 2. CAMERA ROOM NODES
+        const stageGroup = new THREE.Group();
+        stageGroup.position.set(0, 0, -50);
+        scene.add(stageGroup);
+        const stageFloor = new THREE.Mesh(new THREE.BoxGeometry(16, 1, 10), wallMaterial);
+        stageFloor.position.set(0, -1, 0);
+        stageGroup.add(stageFloor);
+        const stageLight = new THREE.PointLight(0xffaa55, 1.5, 25);
+        stageLight.position.set(0, 5, 2);
+        stageGroup.add(stageLight);
+
+        const diningGroup = new THREE.Group();
+        diningGroup.position.set(30, 0, -50);
+        scene.add(diningGroup);
+
+        const coveGroup = new THREE.Group();
+        coveGroup.position.set(-30, 0, -50);
+        scene.add(coveGroup);
+
+        const backstageGroup = new THREE.Group();
+        backstageGroup.position.set(-30, 0, -20);
+        scene.add(backstageGroup);
+
+        /* =========================================================================
+           ANIMATRONIC MODEL GENERATORS
+           ========================================================================= */
+        function createEye(colorHex) {
+            const eyeGroup = new THREE.Group();
+            const socket = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({ color: 0x050505 }));
+            const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), new THREE.MeshBasicMaterial({ color: colorHex }));
+            pupil.position.z = 0.08;
+            eyeGroup.add(socket, pupil);
+            return eyeGroup;
+        }
+
+        function createFreddyModel() {
+            const freddy = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.7 });
+            const bellyMat = new THREE.MeshStandardMaterial({ color: 0x7c5936, roughness: 0.8 });
+
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 2, 16), mat);
+            body.position.y = 1;
+            freddy.add(body);
+
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 2.4;
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), mat);
+            const snout = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.3), bellyMat);
+            snout.position.set(0, -0.1, 0.4);
+
+            const hatBase = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.05, 16), metalMaterial);
+            hatBase.position.y = 0.55;
+            const hatTop = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.4, 16), metalMaterial);
+            hatTop.position.y = 0.75;
+            headGroup.add(head, snout, hatBase, hatTop);
+
+            const leftEye = createEye(0x00aaff); leftEye.position.set(-0.2, 0.1, 0.42);
+            const rightEye = createEye(0x00aaff); rightEye.position.set(0.2, 0.1, 0.42);
+            headGroup.add(leftEye, rightEye);
+
+            freddy.add(headGroup);
+            freddy.headGroup = headGroup;
+            return freddy;
+        }
+
+        function createBonnieModel() {
+            const bonnie = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: 0x3b2d54, roughness: 0.7 });
+
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.75, 2, 16), mat);
+            body.position.y = 1;
+            bonnie.add(body);
+
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 2.4;
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), mat);
+
+            const leftEarBase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 12), mat);
+            leftEarBase.position.set(-0.25, 0.7, 0);
+            const rightEarBase = leftEarBase.clone();
+            rightEarBase.position.x = 0.25;
+
+            headGroup.add(head, leftEarBase, rightEarBase);
+            const leftEye = createEye(0xff0055); leftEye.position.set(-0.18, 0.1, 0.42);
+            const rightEye = createEye(0xff0055); rightEye.position.set(0.18, 0.1, 0.42);
+            headGroup.add(leftEye, rightEye);
+
+            bonnie.add(headGroup);
+            bonnie.headGroup = headGroup;
+            return bonnie;
+        }
+
+        function createChicaModel() {
+            const chica = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: 0xc49a17, roughness: 0.7 });
+            const beakMat = new THREE.MeshStandardMaterial({ color: 0xd65d0e, roughness: 0.5 });
+
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.85, 1.9, 16), mat);
+            body.position.y = 0.95;
+            chica.add(body);
+
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 2.3;
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 16), mat);
+            const beak = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.35, 16), beakMat);
+            beak.rotation.x = Math.PI / 2;
+            beak.position.set(0, -0.08, 0.5);
+
+            headGroup.add(head, beak);
+            const leftEye = createEye(0xcc00cc); leftEye.position.set(-0.18, 0.12, 0.42);
+            const rightEye = createEye(0xcc00cc); rightEye.position.set(0.18, 0.12, 0.42);
+            headGroup.add(leftEye, rightEye);
+
+            chica.add(headGroup);
+            chica.headGroup = headGroup;
+            return chica;
+        }
+
+        function createFoxyModel() {
+            const foxy = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: 0x7a2312, roughness: 0.8 });
+
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 1.9, 16), mat);
+            body.position.y = 0.95;
+            foxy.add(body);
+
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 2.3;
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 16), mat);
+            const snout = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 16), mat);
+            snout.rotation.x = Math.PI / 2;
+            snout.position.set(0, -0.05, 0.45);
+            headGroup.add(head, snout);
+
+            const leftEye = createEye(0xddaa00); leftEye.position.set(-0.18, 0.1, 0.38);
+            headGroup.add(leftEye);
+
+            foxy.add(headGroup);
+            foxy.headGroup = headGroup;
+            return foxy;
+        }
+
+        const freddyMesh = createFreddyModel();
+        const bonnieMesh = createBonnieModel();
+        const chicaMesh = createChicaModel();
+        const foxyMesh = createFoxyModel();
+
+        /* =========================================================================
+           GAME STATE ENGINE & AI MACHINE
+           ========================================================================= */
+        const gameState = {
+            isPlaying: false,
+            isGameOver: false,
+            power: 100.0,
+            timeHour: 0,
+            nightDurationSec: 240,
+            elapsedSeconds: 0,
+            
+            leftDoorClosed: false,
+            rightDoorClosed: false,
+            leftLightOn: false,
+            rightLightOn: false,
+            
+            isMonitorOpen: false,
+            currentCam: '1A',
+
+            bonniePos: '1A',
+            chicaPos: '1A',
+            freddyPos: '1A',
+            foxyStage: 0
+        };
+
+        const nodePositions = {
+            '1A': { freddy: new THREE.Vector3(-0.8, -0.4, -50), bonnie: new THREE.Vector3(0.8, -0.4, -50), chica: new THREE.Vector3(2.4, -0.4, -50) },
+            '1B': { freddy: new THREE.Vector3(28, -0.4, -48), bonnie: new THREE.Vector3(30, -0.4, -52), chica: new THREE.Vector3(32, -0.4, -49) },
+            '1C': { foxy: new THREE.Vector3(-30, -0.4, -50) },
+            '5':  { bonnie: new THREE.Vector3(-30, -0.4, -20) },
+            '2A': { bonnie: new THREE.Vector3(-12, -0.4, -10), foxy: new THREE.Vector3(-10, -0.4, -8) },
+            '4A': { chica: new THREE.Vector3(12, -0.4, -10), freddy: new THREE.Vector3(14, -0.4, -12) },
+            'LEFT_DOOR': { bonnie: new THREE.Vector3(-6.2, -0.4, -0.5), foxy: new THREE.Vector3(-6.2, -0.4, -0.5) },
+            'RIGHT_DOOR': { chica: new THREE.Vector3(6.2, -0.4, -0.5), freddy: new THREE.Vector3(6.2, -0.4, -0.5) },
+            'OFFICE': { bonnie: new THREE.Vector3(-1.2, -0.4, 0.5), chica: new THREE.Vector3(1.2, -0.4, 0.5), freddy: new THREE.Vector3(0, -0.4, 0.5) }
+        };
+
+        function updateAnimatronicPositions() {
+            // Bonnie
+            if (nodePositions[gameState.bonniePos]?.bonnie) {
+                bonnieMesh.position.copy(nodePositions[gameState.bonniePos].bonnie);
+                if (!scene.children.includes(bonnieMesh)) scene.add(bonnieMesh);
+            } else scene.remove(bonnieMesh);
+
+            // Chica
+            if (nodePositions[gameState.chicaPos]?.chica) {
+                chicaMesh.position.copy(nodePositions[gameState.chicaPos].chica);
+                if (!scene.children.includes(chicaMesh)) scene.add(chicaMesh);
+            } else scene.remove(chicaMesh);
+
+            // Freddy
+            if (nodePositions[gameState.freddyPos]?.freddy) {
+                freddyMesh.position.copy(nodePositions[gameState.freddyPos].freddy);
+                if (!scene.children.includes(freddyMesh)) scene.add(freddyMesh);
+            } else scene.remove(freddyMesh);
+
+            // Foxy
+            if (gameState.foxyStage > 0) {
+                let key = (gameState.foxyStage === 3) ? '2A' : '1C';
+                if (nodePositions[key]?.foxy) {
+                    foxyMesh.position.copy(nodePositions[key].foxy);
+                    if (!scene.children.includes(foxyMesh)) scene.add(foxyMesh);
+                }
+            } else scene.remove(foxyMesh);
+        }
+
+        let aiInterval = null;
+        function tickAI() {
+            if (!gameState.isPlaying || gameState.isGameOver) return;
+            const r = Math.random();
+
+            // Bonnie AI
+            if (r < 0.45) {
+                if (gameState.bonniePos === '1A') gameState.bonniePos = '1B';
+                else if (gameState.bonniePos === '1B') gameState.bonniePos = (Math.random() > 0.5) ? '5' : '2A';
+                else if (gameState.bonniePos === '5') gameState.bonniePos = '2A';
+                else if (gameState.bonniePos === '2A') { gameState.bonniePos = 'LEFT_DOOR'; sound.playFootstep(); }
+                else if (gameState.bonniePos === 'LEFT_DOOR') {
+                    if (gameState.leftDoorClosed) gameState.bonniePos = '1B';
+                    else gameState.bonniePos = 'OFFICE';
+                }
+            }
+
+            // Chica AI
+            if (r > 0.55) {
+                if (gameState.chicaPos === '1A') gameState.chicaPos = '1B';
+                else if (gameState.chicaPos === '1B') gameState.chicaPos = '4A';
+                else if (gameState.chicaPos === '4A') { gameState.chicaPos = 'RIGHT_DOOR'; sound.playFootstep(); }
+                else if (gameState.chicaPos === 'RIGHT_DOOR') {
+                    if (gameState.rightDoorClosed) gameState.chicaPos = '1B';
+                    else gameState.chicaPos = 'OFFICE';
+                }
+            }
+
+            // Freddy AI
+            if (gameState.timeHour >= 2 && Math.random() < 0.25) {
+                if (gameState.freddyPos === '1A') gameState.freddyPos = '1B';
+                else if (gameState.freddyPos === '1B') gameState.freddyPos = '4A';
+                else if (gameState.freddyPos === '4A') gameState.freddyPos = 'RIGHT_DOOR';
+                else if (gameState.freddyPos === 'RIGHT_DOOR') {
+                    if (!gameState.rightDoorClosed) gameState.freddyPos = 'OFFICE';
+                    else gameState.freddyPos = '1B';
+                }
+                sound.playFreddyLaugh();
+            }
+
+            // Foxy AI
+            if (gameState.currentCam !== '1C' || !gameState.isMonitorOpen) {
+                if (Math.random() < 0.3) {
+                    gameState.foxyStage = Math.min(3, gameState.foxyStage + 1);
+                    if (gameState.foxyStage === 3) {
+                        setTimeout(() => {
+                            if (!gameState.isPlaying) return;
+                            if (gameState.leftDoorClosed) {
+                                sound.playFootstep();
+                                gameState.power = Math.max(0, gameState.power - 5);
+                                gameState.foxyStage = 0;
+                            } else {
+                                triggerJumpscare('FOXY');
+                            }
+                        }, 3500);
+                    }
+                }
+            }
+
+            if ((gameState.bonniePos === 'OFFICE' || gameState.chicaPos === 'OFFICE' || gameState.freddyPos === 'OFFICE') && !gameState.isMonitorOpen) {
+                let attacker = gameState.bonniePos === 'OFFICE' ? 'BONNIE' : (gameState.chicaPos === 'OFFICE' ? 'CHICA' : 'FREDDY');
+                triggerJumpscare(attacker);
+            }
+
+            updateAnimatronicPositions();
+        }
+
+        /* =========================================================================
+           POWER & TIMER LOOP
+           ========================================================================= */
+        let gameTimer = null;
+        function updatePowerAndClock() {
+            if (!gameState.isPlaying || gameState.isGameOver) return;
+
+            let usage = 1;
+            if (gameState.leftDoorClosed) usage++;
+            if (gameState.rightDoorClosed) usage++;
+            if (gameState.leftLightOn) usage++;
+            if (gameState.rightLightOn) usage++;
+            if (gameState.isMonitorOpen) usage++;
+
+            const usageContainer = document.getElementById('hud-usage-bars');
+            usageContainer.innerHTML = '';
+            for (let i = 0; i < 4; i++) {
+                const bar = document.createElement('div');
+                bar.className = `w-2.5 h-3.5 sm:w-3 sm:h-4 rounded-sm ${i < usage ? (usage > 3 ? 'bg-red-500' : 'bg-green-500') : 'bg-gray-800'}`;
+                usageContainer.appendChild(bar);
+            }
+
+            gameState.power = Math.max(0, gameState.power - (0.08 * usage));
+            document.getElementById('hud-power-val').innerText = `${Math.ceil(gameState.power)}%`;
+
+            if (gameState.power <= 0) {
+                handlePowerOutage();
+                return;
+            }
+
+            gameState.elapsedSeconds += 1;
+            const hourProgress = Math.floor((gameState.elapsedSeconds / gameState.nightDurationSec) * 6);
+            if (hourProgress !== gameState.timeHour && hourProgress <= 6) {
+                gameState.timeHour = hourProgress;
+                document.getElementById('hud-time').innerText = gameState.timeHour === 0 ? '12 AM' : `${gameState.timeHour} AM`;
+                if (gameState.timeHour === 6) triggerVictory();
+            }
+        }
+
+        function handlePowerOutage() {
+            gameState.isPlaying = false;
+            clearInterval(aiInterval);
+            clearInterval(gameTimer);
+
+            gameState.leftDoorClosed = gameState.rightDoorClosed = gameState.leftLightOn = gameState.rightLightOn = gameState.isMonitorOpen = false;
+            document.getElementById('monitor-overlay').classList.add('hidden');
+            document.getElementById('hud-overlay').classList.add('hidden');
+
+            officeCeilingLight.intensity = 0;
+            officeAmbientLight.intensity = 0.02;
+            sound.setFanVolume(0);
+
+            sound.playToreadorMarch(() => {
+                triggerJumpscare('FREDDY');
+            });
+        }
+
+        /* =========================================================================
+           JUMPSCARE & VICTORY
+           ========================================================================= */
+        function triggerJumpscare(character) {
+            if (gameState.isGameOver) return;
+            gameState.isGameOver = true;
+            gameState.isPlaying = false;
+
+            clearInterval(aiInterval);
+            clearInterval(gameTimer);
+
+            sound.playJumpscare();
+            document.getElementById('hud-overlay').classList.add('hidden');
+            document.getElementById('monitor-overlay').classList.add('hidden');
+
+            let model = (character === 'BONNIE') ? bonnieMesh :
+                        (character === 'CHICA') ? chicaMesh :
+                        (character === 'FOXY') ? foxyMesh : freddyMesh;
+
+            if (!scene.children.includes(model)) scene.add(model);
+
+            document.body.classList.add('jumpscare-shake');
+            officeCeilingLight.intensity = 2.5;
+            officeCeilingLight.color.setHex(0xff0000);
+
+            let startTime = performance.now();
+            function animateJumpscare(now) {
+                let elapsed = (now - startTime) / 1000;
+                model.position.set(0, -0.3, 1.2 - elapsed * 0.5);
+                model.rotation.y = Math.sin(elapsed * 30) * 0.2;
+                if (model.headGroup) model.headGroup.rotation.x = Math.sin(elapsed * 40) * 0.3;
+                officeCeilingLight.intensity = Math.random() > 0.3 ? 3.0 : 0.2;
+
+                if (elapsed < 1.4) {
+                    requestAnimationFrame(animateJumpscare);
+                } else {
+                    document.body.classList.remove('jumpscare-shake');
+                    document.getElementById('game-over-screen').classList.remove('hidden');
+                    document.getElementById('game-over-reason').innerText = `${character} ATTACKED YOU IN THE DARK!`;
+                }
+            }
+            requestAnimationFrame(animateJumpscare);
+        }
+
+        function triggerVictory() {
+            gameState.isPlaying = false;
+            gameState.isGameOver = true;
+            clearInterval(aiInterval);
+            clearInterval(gameTimer);
+
+            sound.play6AMCheer();
+            document.getElementById('hud-overlay').classList.add('hidden');
+            document.getElementById('monitor-overlay').classList.add('hidden');
+            document.getElementById('victory-screen').classList.remove('hidden');
+        }
+
+        /* =========================================================================
+           CONTROLS & LISTENERS
+           ========================================================================= */
+        function toggleLeftDoor() { if (gameState.isPlaying && gameState.power > 0) { gameState.leftDoorClosed = !gameState.leftDoorClosed; sound.playDoorSound(); } }
+        function toggleRightDoor() { if (gameState.isPlaying && gameState.power > 0) { gameState.rightDoorClosed = !gameState.rightDoorClosed; sound.playDoorSound(); } }
+        function toggleLeftLight() { if (gameState.isPlaying && gameState.power > 0) { gameState.leftLightOn = !gameState.leftLightOn; gameState.rightLightOn = false; sound.playLightSwitch(); } }
+        function toggleRightLight() { if (gameState.isPlaying && gameState.power > 0) { gameState.rightLightOn = !gameState.rightLightOn; gameState.leftLightOn = false; sound.playLightSwitch(); } }
+
+        function toggleMonitor() {
+            if (!gameState.isPlaying || gameState.power <= 0) return;
+            gameState.isMonitorOpen = !gameState.isMonitorOpen;
+            sound.playLightSwitch();
+
+            const monitorUI = document.getElementById('monitor-overlay');
+            if (gameState.isMonitorOpen) {
+                monitorUI.classList.remove('hidden');
+            } else {
+                monitorUI.classList.add('hidden');
+                if (['OFFICE'].includes(gameState.bonniePos) || ['OFFICE'].includes(gameState.chicaPos) || ['OFFICE'].includes(gameState.freddyPos)) {
+                    let attacker = gameState.bonniePos === 'OFFICE' ? 'BONNIE' : (gameState.chicaPos === 'OFFICE' ? 'CHICA' : 'FREDDY');
+                    triggerJumpscare(attacker);
+                }
+            }
+        }
+
+        document.querySelectorAll('.cam-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const camId = e.currentTarget.getAttribute('data-cam');
+                gameState.currentCam = camId;
+                sound.playLightSwitch();
+                document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                const camNames = { '1A': 'CAM 1A - SHOW STAGE', '1B': 'CAM 1B - DINING', '1C': 'CAM 1C - COVE', '2A': 'CAM 2A - W. HALL', '4A': 'CAM 4A - E. HALL', '5': 'CAM 5 - BACKSTAGE' };
+                document.getElementById('cam-title-display').innerText = camNames[camId] || 'CAM FEED';
+            });
+        });
+
+        document.getElementById('ui-btn-left-door').addEventListener('click', toggleLeftDoor);
+        document.getElementById('ui-btn-right-door').addEventListener('click', toggleRightDoor);
+        document.getElementById('ui-btn-left-light').addEventListener('click', toggleLeftLight);
+        document.getElementById('ui-btn-right-light').addEventListener('click', toggleRightLight);
+        document.getElementById('btn-toggle-monitor').addEventListener('click', toggleMonitor);
+
+        document.getElementById('btn-start-game').addEventListener('click', () => {
+            sound.init();
+            document.getElementById('main-menu').classList.add('hidden');
+            document.getElementById('night-intro').classList.remove('hidden');
+
+            setTimeout(() => {
+                document.getElementById('night-intro').classList.add('hidden');
+                document.getElementById('hud-overlay').classList.remove('hidden');
+                startGame();
+            }, 2500);
+        });
+
+        document.getElementById('btn-how-to-play').addEventListener('click', () => document.getElementById('modal-instructions').classList.remove('hidden'));
+        document.getElementById('btn-close-modal').addEventListener('click', () => document.getElementById('modal-instructions').classList.add('hidden'));
+        document.getElementById('btn-retry').addEventListener('click', () => location.reload());
+        document.getElementById('btn-victory-main').addEventListener('click', () => location.reload());
+
+        function startGame() {
+            gameState.isPlaying = true;
+            gameState.isGameOver = false;
+            gameState.power = 100.0;
+            gameState.timeHour = 0;
+            gameState.elapsedSeconds = 0;
+            gameState.bonniePos = gameState.chicaPos = gameState.freddyPos = '1A';
+            gameState.foxyStage = 0;
+
+            updateAnimatronicPositions();
+            aiInterval = setInterval(tickAI, 4500);
+            gameTimer = setInterval(updatePowerAndClock, 1000);
+        }
+
+        // Static Overlay
+        const staticCanvas = document.getElementById('static-canvas');
+        const staticCtx = staticCanvas.getContext('2d');
+        function renderStatic() {
+            staticCanvas.width = window.innerWidth / 4;
+            staticCanvas.height = window.innerHeight / 4;
+            const imgData = staticCtx.createImageData(staticCanvas.width, staticCanvas.height);
+            const buffer32 = new Uint32Array(imgData.data.buffer);
+            for (let i = 0; i < buffer32.length; i++) {
+                if (Math.random() < 0.5) buffer32[i] = 0xffffffff;
+            }
+            staticCtx.putImageData(imgData, 0, 0);
+        }
+
+        // Main Render Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            fanBlades.rotation.z += 0.4;
+
+            if (gameState.isPlaying && !gameState.isGameOver) {
+                currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+
+                if (!gameState.isMonitorOpen) {
+                    camera.position.set(0, 0, 2);
+                    camera.rotation.set(0, currentRotationY, 0);
+                } else {
+                    camera.rotation.set(0, 0, 0);
+                    if (gameState.currentCam === '1A') camera.position.set(0, 2, -43);
+                    else if (gameState.currentCam === '1B') camera.position.set(30, 2, -43);
+                    else if (gameState.currentCam === '1C') camera.position.set(-30, 2, -43);
+                    else if (gameState.currentCam === '5') camera.position.set(-30, 2, -13);
+                    else if (gameState.currentCam === '2A') camera.position.set(-10, 1, -5);
+                    else if (gameState.currentCam === '4A') camera.position.set(10, 1, -5);
+                }
+
+                leftDoorMesh.position.y += ((gameState.leftDoorClosed ? 0.25 : 4.5) - leftDoorMesh.position.y) * 0.2;
+                rightDoorMesh.position.y += ((gameState.rightDoorClosed ? 0.25 : 4.5) - rightDoorMesh.position.y) * 0.2;
+
+                leftHallLight.intensity = gameState.leftLightOn ? 4.0 : 0;
+                rightHallLight.intensity = gameState.rightLightOn ? 4.0 : 0;
+            }
+
+            renderStatic();
+            renderer.render(scene, camera);
+        }
+
+        // Dynamic Resize Handler for All Screen Resolutions & Orientations
+        window.addEventListener('resize', () => {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.aspect = aspect;
+            camera.fov = aspect < 1 ? 80 : 65; // Dynamic FOV compensation for portrait mode
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        updateAnimatronicPositions();
+        animate();
+    </script>
+</body>
+</html>
